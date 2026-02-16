@@ -160,7 +160,7 @@ func main() {
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	// We create the shader program from our shader struct that we have created externally
-	shader0, err := renderer.NewShader("Shaders/vShader.glsl", "Shaders/fShader.glsl")
+	shader0, err := renderer.NewShader("shaders/vShader.glsl", "shaders/fShader.glsl")
 	if err != nil {
 		panic(fmt.Sprintf("Shader creation failed%v", err))
 	}
