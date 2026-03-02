@@ -3,16 +3,13 @@ package main
 import (
 	"fmt"
 	"runtime"
-	"unsafe"
 
-	"GEngine/renderer"
+	"gayEngine/renderer"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	glm "github.com/go-gl/mathgl/mgl32"
-
-	"neilpa.me/go-stbi"
 )
 
 const (
@@ -135,29 +132,8 @@ func main() {
 	glfw.SwapInterval(1)
 	gl.Enable(gl.DEPTH_TEST)
 
-	// Texture
-	var texture uint32
-	gl.GenTextures(1, &texture)
-	gl.BindTexture(gl.TEXTURE_2D, texture)
-
-	// We set the texture wrapping/filtering options
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-
-	// Load and generate the texture
-	var width, height int32
-	data, err := stbi.Load("textures/container.jpg")
-	if err != nil {
-		panic(fmt.Sprintf("failed to load the texture%v", err))
-	}
-
-	width = int32(data.Rect.Dx())
-	height = int32(data.Rect.Dy())
-
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&data.Pix[0]))
-	gl.GenerateMipmap(gl.TEXTURE_2D)
+	// Model
+	model0 := renderer.NewModel("resources/objects/backpack/backpack.obj")
 
 	// We create the shader program from our shader struct that we have created externally
 	shader0, err := renderer.NewShader("shaders/vShader.glsl", "shaders/fShader.glsl")
@@ -165,25 +141,6 @@ func main() {
 		panic(fmt.Sprintf("Shader creation failed%v", err))
 	}
 	defer shader0.Delete()
-
-	// We create the vertex array object that stores all the information from the vertices
-	var VAO, VBO uint32
-	gl.GenVertexArrays(1, &VAO)
-	gl.GenBuffers(1, &VBO)
-
-	gl.BindVertexArray(VAO)
-
-	// We create the vertex buffer objects that stores the amount of vertices
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-	// Stores data into the Vertex buffer object, with the created vertices
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, unsafe.Pointer(&vertices[0]), gl.STATIC_DRAW)
-
-	// We link the vertex attributes and enable them
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 20, gl.PtrOffset(0))
-	gl.EnableVertexAttribArray(0)
-
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 20, gl.PtrOffset(12))
-	gl.EnableVertexAttribArray(1)
 
 	for !window.ShouldClose() {
 		currentFrame := glfw.GetTime()
@@ -196,8 +153,6 @@ func main() {
 		gl.ClearColor(0.2, 0.3, 0.3, 1.)
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-		gl.BindTexture(gl.TEXTURE_2D, texture)
-
 		shader0.Use()
 
 		// We pass the projection matrix to the shader
@@ -208,30 +163,20 @@ func main() {
 		view := camera.GetViewMatrix()
 		shader0.SetMat4("view", view)
 
-		gl.BindVertexArray(VAO)
-
-		for i, pos := range cubePos {
-			// We create an identity matrix
-			model := mgl32.Ident4()
-			// We chain the translation to it
-			model = model.Mul4(mgl32.Translate3D(pos[0], pos[1], pos[2]))
-
-			// We chaing the rotation to the matrix
-			angle := float32(20.0 * float32(i))
-			model = model.Mul4(mgl32.HomogRotate3D(mgl32.DegToRad(angle), mgl32.Vec3{1.0, 0.3, 0.5}))
-
-			// Send the matrix to the shader
-			shader0.SetMat4("model", model)
-
-			gl.DrawArrays(gl.TRIANGLES, 0, 36)
-		}
+		// Render the loaded model
+		model := mgl32.Ident4()
+		// We set in the origin of coordinates, and scale it into 1 dimension
+		translation := mgl32.Translate3D(0.0, 0.0, 0.0)
+		model = model.Mul4(translation)
+		scale := mgl32.Scale3D(1.0, 1.0, 1.0)
+		model = model.Mul4(scale)
+		// We set the model matrix and draw the model
+		shader0.SetMat4("model", model)
+		model0.Draw(*shader0)
 
 		window.SwapBuffers()
 		glfw.PollEvents()
 	}
-
-	gl.DeleteVertexArrays(1, &VAO)
-	gl.DeleteBuffers(1, &VBO)
 
 	glfw.Terminate()
 

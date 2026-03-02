@@ -104,7 +104,11 @@ func (s *Shader) SetBool(name string, value bool) {
 }
 
 func (s *Shader) SetInt(name string, value int) {
-	gl.Uniform1i(gl.GetUniformLocation(s.ID, gl.Str(name+"\x00")), int32(value))
+	location := gl.GetUniformLocation(s.ID, gl.Str(name+"\x00"))
+	if location == -1 {
+		fmt.Printf("Warning: Uniform '%s' not found in shader!\n", name)
+	}
+	gl.Uniform1i(location, int32(value))
 }
 
 func (s *Shader) SetFloat(name string, value float32) {
